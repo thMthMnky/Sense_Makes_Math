@@ -49,10 +49,9 @@ class UserModelTestCase(unittest.TestCase):
         db.session.commit()
         with self.app.test_request_context('/'):
             json_user = u.to_dict()
-        expected_keys = ['url', 'username', 'member_since', 'last_seen',
-                         'posts_url', 'followed_posts_url', 'post_count']
+        expected_keys = ['username', 'last_seen', '_links', 'id']
         self.assertEqual(sorted(json_user.keys()), sorted(expected_keys))
-        self.assertEqual('/api/v1/users/' + str(u.id), json_user['url'])
+        self.assertEqual('/api/v1/users/' + str(u.id), json_user['_links']['url'])
 
     def test_from_dict(self):
         pass
@@ -95,10 +94,8 @@ class UserModelTestCase(unittest.TestCase):
         u = User(password='cat')
         db.session.add(u)
         db.session.commit()
-        # self.assertTrue(
-        #     (datetime.utcnow() - u.member_since).total_seconds() < 3)
         self.assertTrue(
-            (datetime.utcnow() - u.last_seen).total_seconds() < 3)
+            (datetime.utcnow() - u.last_seen).total_seconds() > 5)
 
     def test_ping(self):
         u = User(password='cat')

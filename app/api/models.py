@@ -1,6 +1,6 @@
 from datetime import datetime
 from werkzeug.security import check_password_hash, generate_password_hash
-
+from hashlib import md5
 from flask import current_app, url_for
 from hashlib import md5
 from flask_login import UserMixin, AnonymousUserMixin
@@ -107,7 +107,7 @@ class User(UserMixin, PaginatedAPIMixin, db.Model):
             '_links': {
                 'self': url_for('api.get_user', id=self.id),
                 'url': url_for('api.get_user', id=self.id),
-                'avatar': self.avatar(128)
+                'avatar': self.gravatar(128)
             }
         }
         if include_email:
@@ -195,6 +195,7 @@ class Role(db.Model):
 
 
 class AnonymousUser(AnonymousUserMixin):
+
     def can(self, permissions):
         return False
 
