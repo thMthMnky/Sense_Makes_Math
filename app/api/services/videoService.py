@@ -7,7 +7,7 @@ from ..utils import sdk
 try:
     videos_timeout = 60 * current_app.config['YOUTUBE_DATA_FETCH_PER_DAY'] / 24
 except Exception as err:
-    print("An error occurred while configuring video service: " + str(err))
+    print("[videoService] " + str(err))
     videos_timeout = 60 * 12 / 24
 
 
