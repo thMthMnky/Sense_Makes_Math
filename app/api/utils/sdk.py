@@ -1,10 +1,9 @@
 import inspect
 import requests
-import string
-import random
+# import random
+# import paypalrestsdk
 from abc import ABC, abstractmethod
 from flask import current_app
-import paypalrestsdk
 from app.api.errors import Error
 
 
@@ -141,13 +140,22 @@ class YouTube(XApiController):
  """
     _base_url = "https://www.googleapis.com/youtube/v3/"
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        pass
+
     @property
     def base_url(self):
         return self._base_url
 
     @base_url.setter
     def base_url(self, newUrl):
-        if isinstance(newUrl, ""):
+        if isinstance(newUrl, str):
             self._base_url = newUrl
 
     @staticmethod
@@ -211,108 +219,8 @@ class YouTube(XApiController):
         ]
         return field in optional_params
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def configure_url(self, resource_name, endpoint):
 
-    def get(self, resource_name, endpoint, opts=None):
-        """
-        This method will retrive a YouTube Resource
-
-        @params:
-            "resource_name" <String> -- A valid YouTube Resource name string
-                 "endpoint" <String> -- A valid YouTube Resource endpoint string
-                     "opts" <Object> -- An Object containing both required and optional
-                            parameters
-
-            For Example, if
-
-                    "resource_name" = "playlist" and
-                    "endpoint" = ''
-                    opts.parts =['id', 'snippet'],
-
-            then a successfull call to
-
-                    "https://www.googleapis.com/youtube/v3/<resource_name>/<endpoint>"
-
-            would return something like:
-
-                "response":   {
-                    "kind": "youtube#activityListResponse",
-                    "etag": etag,
-                    "nextPageToken": string,
-                    "prevPageToken": string,
-                    "pageInfo": {
-                        "totalResults": integer,
-                        "resultsPerPage": integer
-                    },
-                    "items": [
-                        activity Resource
-                    ]
-                },
-
-                where every "item" in "response.items" will be of the form:
-
-                    "resource":   {
-                        "kind": "youtube#playlist",
-                        "etag": "etag",
-                        "id": "string",
-                        "snippet": {
-                            "publishedAt": "datetime",
-                            "channelId": "string",
-                            "title": "string",
-                            "description": "string",
-                            "thumbnails": {
-                            ("key"): {
-                                "url": "string",
-                                "width": "unsigned integer",
-                                "height": "unsigned integer"
-                            }
-                            },
-                            "channelTitle": "string",
-                            "tags": [
-                            "string"
-                            ],
-                            "defaultLanguage": "string",
-                            "localized": {
-                            "title": "string",
-                            "description": "string"
-                            }
-                        },
-                        "status": {
-                            "privacyStatus": "string"
-                        },
-                        "contentDetails": {
-                            "itemCount": "unsigned integer"
-                        },
-                        "player": {
-                            "embedHtml": "string"
-                        },
-                        "localizations": {
-                            ("key"): {
-                            "title": "string",
-                            "description": "string"
-                            }
-                        }
-                    }.
-
-            An unsuccessful call would return somthing like:
-
-                "response" :  {
-                    "error": {
-                    "errors": [
-                    {
-                        "domain": "youtube.parameter",
-                        "reason": "missingRequiredParameter",
-                        "message": "No filter selected. Expected one of: home, channelId, mine",
-                        "locationType": "parameter",
-                        "location": ""
-                    }
-                    ],
-                    "code": 400,
-                    "message": "No filter selected. Expected one of: home, channelId, mine"
-                    }
-                }
-        """
         # Build the URL string
         #
         # step 1: Basic Resource Url
@@ -325,10 +233,14 @@ class YouTube(XApiController):
         if endpoint:
             url += endpoint
 
+        return url
+
+    def configure_parameters(self, opts=None):
+
         # Configure the request parameters
         #
         # Step 1: Load Configuration Values
-        params = {
+        _params = {
             'key': current_app.config['GOOGLE_API_KEY'],
             'channelId': current_app.config['YOUTUBE_CHANNEL_ID'],
             'maxResults': current_app.config['YOUTUBE_DATA_MAXRESULTS'],
@@ -338,15 +250,15 @@ class YouTube(XApiController):
         # Step 2: Load a filter
         if isinstance(opts, object):
             if "chart" in opts.keys():
-                params["chart"] = opts["chart"]
+                _params["chart"] = opts["chart"]
             elif "id" in opts.keys():
-                params["id"] = opts["id"]
+                _params["id"] = opts["id"]
             elif "myRating" in opts.keys():
-                params["myRating"] = opts["myRating"]
+                _params["myRating"] = opts["myRating"]
             elif "mine" in opts.keys():
-                params["mine"] = opts["mine"]
+                _params["mine"] = opts["mine"]
             elif "playlistId" in opts.keys():
-                params["minplaylistIde"] = opts["playlistId"]
+                _params["minplaylistIde"] = opts["playlistId"]
             #
             # Step 3: Load Possible Optional Parameters
             for field in opts.keys():
@@ -356,13 +268,25 @@ class YouTube(XApiController):
                             if self.isValidPart(part):
                                 if part == 'id':
                                     continue
-                                params['part'] += ", " + part
+                                _params['part'] += ", " + part
                     else:
-                        params[field] = opts[field]
-        #
-        # Step 4: Make a call to the YouTubeData Api.V3
+                        _params[field] = opts[field]
+        return _params
+
+    def get(self, resource_name, endpoint, opts=None):
+        """
+        This method will retrive a YouTube Resource
+
+        @params:
+            "resource_name" <String> -- A valid YouTube Resource name string
+                 "endpoint" <String> -- A valid YouTube Resource endpoint string
+                     "opts" <Object> -- An Object containing both required and optional
+                                        parameters
+        """
+        url = self.configure_url(resource_name, endpoint)
+        parameters = self.configure_parameters(opts)
         try:
-            xRes = requests.get(url, params=params)
+            xRes = requests.get(url, params=parameters)
             # To see what a response object might look like,
             # please visit : https://developers.google.com/youtube/v3/docs/playlists#resource or
             # in general: "https://developers.google.com/youtube/v3/docs/< valid#resource >"
@@ -370,14 +294,39 @@ class YouTube(XApiController):
                 return xRes.json()
             else:
                 raise Error(
-                    template="[{} {}] YouTubeError(" + str(xRes.status_code) + ") [in {}.{}]",
-                    context=inspect.stack()[0]
+                    template="[{} {}] YouTubeError(" + str(xRes.status_code) + ") [in {}.{}]"  # ,
+                    # context=inspect.stack()[0]
                 )
         except Exception:
             raise  # Error("[{} {}] InternalServerError: " + str(err), inspect.stack()[0])
 
-    def post(self, endpoint):
+    def post(self, resource_name, endpoint, opts=None):
         pass
+        # """
+        # This method will retrive a YouTube Resource
+
+        # @params:
+        #     "resource_name" <String> -- A valid YouTube Resource name string
+        #          "endpoint" <String> -- A valid YouTube Resource endpoint string
+        #              "opts" <Object> -- An Object containing both required and optional
+        #                                 parameters
+        # """
+        # url = self.configure_url(resource_name, endpoint)
+        # parameters = self.configure_paramters(opts)
+        # try:
+        #     xRes = requests.post(url, params=parameters)
+        #     # To see what a response object might look like,
+        #     # please visit : https://developers.google.com/youtube/v3/docs/playlists#resource or
+        #     # in general: "https://developers.google.com/youtube/v3/docs/< valid#resource >"
+        #     if xRes.ok:
+        #         return xRes.json()
+        #     else:
+        #         raise Error(
+        #             template="[{} {}] YouTubeError(" + str(xRes.status_code) + ") [in {}.{}]"  # ,
+        #             # context=inspect.stack()[0]
+        #         )
+        # except Exception:
+        #     raise  # Error("[{} {}] InternalServerError: " + str(err), inspect.stack()[0])
 
     def put(self, endpoint):
         pass
@@ -425,7 +374,6 @@ class Printful(XApiController):
         # else:
         #     raise BadUrlError(url, None, context)
 
-        # Load params
         params = {
             'Authorization': current_app.config['PRINTFUL_API_KEY']
         }
@@ -463,8 +411,8 @@ class Printful(XApiController):
 #############################################################################
 #
 # Name needs to be unique so just generating a random one
-wpn = ''.join(random.choice(string.ascii_uppercase) for i in range(12))
-print(wpn)
+# wpn = ''.join(random.choice(string.ascii_uppercase) for i in range(12))
+# print(wpn)
 #
 # web_profile = paypalrestsdk.WebProfile({
 #     "name": wpn,
@@ -491,18 +439,6 @@ print(wpn)
 
 
 #############################################################################
-# Configure the PayPal SDK
-#
-#   see: https://github.com/paypal/PayPal-Python-SDK/blob/master/README.md
-#############################################################################
-paypalrestsdk.configure({
-    'client_id': current_app.config['PAYPAL_CLIENT_ID'],
-    'client_secret': current_app.config['PAYPAL_CLIENT_SECRET'],
-    'mode': current_app.config['PAYPAL_MODE']
-})
-
-
-#############################################################################
 # Create A Payment
 #
 #
@@ -512,81 +448,81 @@ paypalrestsdk.configure({
 #   invoice number etc.
 #############################################################################
 #
-Invoice = paypalrestsdk.Payment({
-    # payment = paypalrestsdk.Payment({
-    #     "intent": "sale",
-    #     "redirect_urls": {
-    #         "return_url": "http://www.return.com",
-    #         "cancel_url": "http://www.cancel.com"
-    #     },
-    #     "payer": {
-    #         "payment_method": "paypal",
-    #         "payer_info": {
-    #             "tax_id_type": "BR_CPF",
-    #             "tax_id": "Fh618775690"
-    #         }
-    #     },
-    #     "transactions": [
-    #         {
-    #             "amount": {
-    #                 "total": "34.07",
-    #                 "currency": "USD",
-    #                 "details": {
-    #                     "subtotal": "30.00",
-    #                     "tax": "0.07",
-    #                     "shipping": "1.00",
-    #                     "handling_fee": "1.00",
-    #                     "shipping_discount": "1.00",
-    #                     "insurance": "1.00"
-    #                 }
-    #             },
-    #             "description": "This is the payment transaction description.",
-    #             "custom": "PP_EMS_90048630024435",
-    #             "invoice_number": "48787589677",
-    #             "payment_options": {
-    #                 "allowed_payment_method": "INSTANT_FUNDING_SOURCE"
-    #             },
-    #             "soft_descriptor": "ECHI5786786",
-    #             "item_list": {
-    #                 "items": [
-    #                     {
-    #                         "name": "bowling",
-    #                         "description": "Bowling Team Shirt",
-    #                         "quantity": "5",
-    #                         "price": "3",
-    #                         "tax": "0.01",
-    #                         "sku": "1",
-    #                         "currency": "USD"
-    #                     },
-    #                     {
-    #                         "name": "mesh",
-    #                         "description": "80s Mesh Sleeveless Shirt",
-    #                         "quantity": "1",
-    #                         "price": "17",
-    #                         "tax": "0.02",
-    #                         "sku": "product34",
-    #                         "currency": "USD"
-    #                     },
-    #                     {
-    #                         "name": "discount",
-    #                         "quantity": "1",
-    #                         "price": "-2.00",
-    #                         "sku": "product",
-    #                         "currency": "USD"
-    #                     }
-    #                 ],
-    #                 "shipping_address": {
-    #                     "recipient_name": "Betsy Buyer",
-    #                     "line1": "111 First Street",
-    #                     "city": "Saratoga",
-    #                     "country_code": "US",
-    #                     "postal_code": "95070",
-    #                     "state": "CA"
-    #                 }
-    #             }
-    #         }
-    #     ]
-})
+# Invoice = paypalrestsdk.Payment({
+#     # payment = paypalrestsdk.Payment({
+#     #     "intent": "sale",
+#     #     "redirect_urls": {
+#     #         "return_url": "http://www.return.com",
+#     #         "cancel_url": "http://www.cancel.com"
+#     #     },
+#     #     "payer": {
+#     #         "payment_method": "paypal",
+#     #         "payer_info": {
+#     #             "tax_id_type": "BR_CPF",
+#     #             "tax_id": "Fh618775690"
+#     #         }
+#     #     },
+#     #     "transactions": [
+#     #         {
+#     #             "amount": {
+#     #                 "total": "34.07",
+#     #                 "currency": "USD",
+#     #                 "details": {
+#     #                     "subtotal": "30.00",
+#     #                     "tax": "0.07",
+#     #                     "shipping": "1.00",
+#     #                     "handling_fee": "1.00",
+#     #                     "shipping_discount": "1.00",
+#     #                     "insurance": "1.00"
+#     #                 }
+#     #             },
+#     #             "description": "This is the payment transaction description.",
+#     #             "custom": "PP_EMS_90048630024435",
+#     #             "invoice_number": "48787589677",
+#     #             "payment_options": {
+#     #                 "allowed_payment_method": "INSTANT_FUNDING_SOURCE"
+#     #             },
+#     #             "soft_descriptor": "ECHI5786786",
+#     #             "item_list": {
+#     #                 "items": [
+#     #                     {
+#     #                         "name": "bowling",
+#     #                         "description": "Bowling Team Shirt",
+#     #                         "quantity": "5",
+#     #                         "price": "3",
+#     #                         "tax": "0.01",
+#     #                         "sku": "1",
+#     #                         "currency": "USD"
+#     #                     },
+#     #                     {
+#     #                         "name": "mesh",
+#     #                         "description": "80s Mesh Sleeveless Shirt",
+#     #                         "quantity": "1",
+#     #                         "price": "17",
+#     #                         "tax": "0.02",
+#     #                         "sku": "product34",
+#     #                         "currency": "USD"
+#     #                     },
+#     #                     {
+#     #                         "name": "discount",
+#     #                         "quantity": "1",
+#     #                         "price": "-2.00",
+#     #                         "sku": "product",
+#     #                         "currency": "USD"
+#     #                     }
+#     #                 ],
+#     #                 "shipping_address": {
+#     #                     "recipient_name": "Betsy Buyer",
+#     #                     "line1": "111 First Street",
+#     #                     "city": "Saratoga",
+#     #                     "country_code": "US",
+#     #                     "postal_code": "95070",
+#     #                     "state": "CA"
+#     #                 }
+#     #             }
+#     #         }
+#     #     ]
+# })
 
 #
 # # Create Payment and return status

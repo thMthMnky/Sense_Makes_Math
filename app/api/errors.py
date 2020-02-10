@@ -108,7 +108,7 @@ class Error(Exception):
         if isValidContext(context):
             self.context = {
                 'timestamp': datetime.now(),
-                'lineno': context['lineno'],
+                'lineno': int(context['lineno'], base=10),
                 'filename': context['filename'].rpartition("/")[2].rpartition(".")[0],
                 'function': context['function']
             }

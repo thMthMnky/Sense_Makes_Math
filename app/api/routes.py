@@ -96,11 +96,6 @@ def stockPrintfulProducts():
     return jsonify(catalog)
 
 
-# @api_bp.errorhandler(407)
-# def handle_bad_request(e):
-#     return 'e: ' + str(e), 407
-
-
 @api_bp.app_errorhandler(400)
 def bad_request(message):
     response = jsonify({'error': 'bad request', 'message': message})
@@ -122,6 +117,6 @@ def forbidden(message):
     return response
 
 
-# @api_bp.errorhandler(407)
-# def validation_error(e):
-#     return bad_request(e.args[0])
+@api_bp.errorhandler(422)
+def validation_error(e):
+    return bad_request(e.args[0])

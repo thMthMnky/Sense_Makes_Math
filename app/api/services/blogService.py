@@ -6,7 +6,13 @@ from app.api.utils import strip_html
 # from app.api.utils import sdk
 # from app.api.errors import Error
 
-blog_timeout = 60 * current_app.config['BLOGGER_DATA_FETCH_PER_DAY'] / 24
+try:
+    blog_timeout = 60 * current_app.config['BLOGGER_DATA_FETCH_PER_DAY'] / 24
+except Exception as err:
+    print("An error occurred while configuring blog service: " + str(err))
+    blog_timeout = 60 * 12 / 24
+
+
 @cache.cached(timeout=blog_timeout, key_prefix='getBloggerData')
 def getBloggerData():
     url = 'https://www.googleapis.com/blogger/v3/blogs/' + \

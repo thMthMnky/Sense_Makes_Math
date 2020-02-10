@@ -1,5 +1,5 @@
 import os
-import logging.handlers
+import logging
 from logging.handlers import RotatingFileHandler, SMTPHandler
 
 from dotenv import load_dotenv
@@ -34,6 +34,7 @@ class Config(object):
     TESTING = False
     STAGING = False
     PRODUCTION = False
+    HEROKU = False
     DEBUG = False
 
     ADMIN_CONTACT = os.environ.get('ADMIN_CONTACT')
@@ -189,6 +190,7 @@ class ProductionConfig(Config):
 
 
 class HerokuConfig(ProductionConfig):
+    HEROKU = True
     SSL_REDIRECT = True if os.environ.get('DYNO') else False
 
     @classmethod
