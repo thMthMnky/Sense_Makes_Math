@@ -1,6 +1,4 @@
-
 import unittest
-from flask import current_app
 from app import create_app, db
 
 
@@ -17,7 +15,11 @@ class BasicsTestCase(unittest.TestCase):
         self.app_context.pop()
 
     def test_app_exists(self):
-        self.assertFalse(current_app is None)
+        self.assertFalse(self.app is None)
 
     def test_app_is_testing(self):
-        self.assertTrue(current_app.config['TESTING'])
+        self.assertTrue(self.app.config['TESTING'])
+        self.assertFalse(self.app.config['DEVELOPMENT'])
+        self.assertFalse(self.app.config['STAGING'])
+        self.assertFalse(self.app.config['PRODUCTION'])
+        self.assertFalse(self.app.config['HEROKU'])

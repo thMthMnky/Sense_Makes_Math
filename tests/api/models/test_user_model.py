@@ -6,12 +6,14 @@ from app.api.models import User, Role, Permission, AnonymousUser
 
 
 class UserModelTestCase(unittest.TestCase):
+
     def setUp(self):
         self.app = create_app('testing')
         self.app_context = self.app.app_context()
         self.app_context.push()
-        db.create_all()
-        Role.insert_roles()
+        with self.app_context:
+            db.create_all()
+            Role.insert_roles()
 
     def tearDown(self):
         db.session.remove()
@@ -105,3 +107,7 @@ class UserModelTestCase(unittest.TestCase):
         last_seen_before = u.last_seen
         u.ping()
         self.assertTrue(u.last_seen > last_seen_before)
+
+
+if __name__ == '__main__':
+    unittest.main()
